@@ -1,0 +1,191 @@
+const { escapeHtml: esc } = require('../utils/sanitize');
+
+const BRAND = {
+  yellow: '#FFC928',
+  yellowSoft: '#FFE58A',
+  green: '#168447',
+  dark: '#111713',
+  text: '#17221A',
+  muted: '#747B72',
+  bg: '#FFFDF5',
+};
+
+function formatDate(d) {
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date(d)) + ' IST';
+}
+
+function row(label, value, { multiline = false } = {}) {
+  const v = value === undefined || value === null || value === '' ? '<span style="color:#9aa39a">—</span>' : esc(value);
+  return `
+  <tr>
+    <td style="padding:10px 0;width:38%;vertical-align:top;font-size:13px;color:${BRAND.muted};border-bottom:1px solid #f1ecd6;">${esc(label)}</td>
+    <td style="padding:10px 0;vertical-align:top;font-size:14px;color:${BRAND.text};font-weight:600;border-bottom:1px solid #f1ecd6;${multiline ? 'white-space:pre-wrap;' : ''}">${v}</td>
+  </tr>`;
+}
+
+function section(title, rows) {
+  return `
+  <tr><td style="padding:22px 0 6px;">
+    <div style="font-size:12px;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;color:${BRAND.green};">${esc(title)}</div>
+  </td></tr>
+  <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table></td></tr>`;
+}
+
+function layout({ preheader, heading, intro, body, footer }) {
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(heading)}</title></head>
+<body style="margin:0;padding:0;background:#f4f1e4;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+<span style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1e4;padding:28px 12px;">
+<tr><td align="center">
+  <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;background:${BRAND.bg};border-radius:22px;overflow:hidden;box-shadow:0 10px 40px rgba(17,23,19,.12);">
+    <tr><td style="background:${BRAND.dark};padding:26px 32px;">
+      <table role="presentation" width="100%"><tr>
+        <td style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px;">
+          <span style="display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;background:${BRAND.yellow};color:${BRAND.dark};border-radius:9px;margin-right:10px;font-weight:900;">C</span>City Delivery Services
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="background:linear-gradient(135deg,${BRAND.yellow},${BRAND.yellowSoft});background-color:${BRAND.yellow};padding:30px 32px;">
+      <div style="font-size:26px;line-height:1.2;font-weight:800;color:${BRAND.dark};">${esc(heading)}</div>
+      <div style="margin-top:8px;font-size:14px;color:${BRAND.text};">${intro}</div>
+    </td></tr>
+    <tr><td style="padding:8px 32px 30px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${body}</table>
+    </td></tr>
+    <tr><td style="padding:20px 32px 28px;background:#fff;border-top:1px solid #f1ecd6;font-size:12px;color:${BRAND.muted};line-height:1.6;">${footer}</td></tr>
+  </table>
+</td></tr></table></body></html>`;
+}
+
+function ownerRequestEmail(r) {
+  const budget = r.estimatedBudget != null ? `₹${Number(r.estimatedBudget).toLocaleString('en-IN')}` : '';
+  const image = r.productImage?.url
+    ? `<tr><td style="padding:18px 0 0;">
+         <div style="font-size:12px;color:${BRAND.muted};margin-bottom:8px;">Reference image</div>
+         <a href="${esc(r.productImage.url)}"><img src="${esc(r.productImage.url)}" alt="Product reference" width="280" style="max-width:100%;border-radius:14px;border:1px solid #f1ecd6;display:block;"></a>
+       </td></tr>`
+    : '';
+
+  const body =
+    `<tr><td style="padding-top:20px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:14px;padding:9px 16px;border-radius:999px;letter-spacing:.5px;">Request ID: ${esc(r.requestId)}</span>
+       <span style="display:inline-block;margin-left:8px;font-size:13px;color:${BRAND.muted};">${esc(formatDate(r.createdAt))}</span>
+     </td></tr>` +
+    section(
+      'Customer',
+      row('Name', r.customerName) + row('Email', r.email) + row('Mobile number', r.phone)
+    ) +
+    section(
+      'Product',
+      row('Product name', r.productName) +
+        row('Category', r.productCategory) +
+        row('Store name', r.storeName) +
+        row('Store location', r.storeLocation) +
+        row('Quantity', r.quantity) +
+        row('Estimated budget', budget) +
+        row('Description', r.productDescription, { multiline: true })
+    ) +
+    image +
+    section(
+      'Delivery',
+      row('Address', r.deliveryAddress, { multiline: true }) +
+        row('City', r.city) +
+        row('Postal code', r.postalCode) +
+        row('Additional instructions', r.additionalInstructions, { multiline: true })
+    ) +
+    `<tr><td style="padding-top:24px;">
+       <a href="mailto:${esc(r.email)}?subject=${encodeURIComponent('Your product request ' + r.requestId)}" style="display:inline-block;background:${BRAND.green};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 24px;border-radius:12px;">Reply to customer</a>
+     </td></tr>`;
+
+  return {
+    subject: `New Product Request - City Delivery Services (#${r.requestId})`,
+    html: layout({
+      preheader: `${r.customerName} requested ${r.productName} from ${r.storeName}`,
+      heading: 'New product request',
+      intro: `A customer just submitted a request through the website.`,
+      body,
+      footer: 'You are receiving this because this address is configured as OWNER_EMAIL for City Delivery Services.',
+    }),
+    text: [
+      `New product request (#${r.requestId})`,
+      `Submitted: ${formatDate(r.createdAt)}`,
+      '',
+      `CUSTOMER`,
+      `Name: ${r.customerName}`,
+      `Email: ${r.email}`,
+      `Mobile: ${r.phone}`,
+      '',
+      `PRODUCT`,
+      `Product: ${r.productName}`,
+      `Category: ${r.productCategory}`,
+      `Store: ${r.storeName}`,
+      `Store location: ${r.storeLocation}`,
+      `Quantity: ${r.quantity}`,
+      `Estimated budget: ${budget || '—'}`,
+      `Description: ${r.productDescription}`,
+      r.productImage?.url ? `Image: ${r.productImage.url}` : '',
+      '',
+      `DELIVERY`,
+      `Address: ${r.deliveryAddress}`,
+      `City: ${r.city}`,
+      `Postal code: ${r.postalCode}`,
+      `Additional instructions: ${r.additionalInstructions || '—'}`,
+    ]
+      .filter((l) => l !== null)
+      .join('\n'),
+  };
+}
+
+function customerConfirmationEmail(r) {
+  const body =
+    `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
+       Hi ${esc(r.customerName)},<br><br>
+       Thank you — we have received your product request. Our team will review it and contact you with the next steps.
+     </td></tr>
+     <tr><td style="padding-top:18px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Request ID: ${esc(r.requestId)}</span>
+     </td></tr>` +
+    section('Your request', row('Product', r.productName) + row('Store', r.storeName) + row('Quantity', r.quantity)) +
+    `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+       Please keep your Request ID handy and mention it if you contact us. This email confirms receipt only — it is not a guarantee of availability, price or delivery time.
+     </td></tr>`;
+
+  return {
+    subject: 'Your Product Request Has Been Received - City Delivery Services',
+    html: layout({
+      preheader: `We received your request for ${r.productName}.`,
+      heading: 'We got your request',
+      intro: 'Sit tight — our team will be in touch.',
+      body,
+      footer: 'You are receiving this email because a product request was submitted with your email address. If this was not you, you can ignore this message.',
+    }),
+    text: `Hi ${r.customerName},\n\nWe have received your product request.\n\nRequest ID: ${r.requestId}\nProduct: ${r.productName}\nStore: ${r.storeName}\n\nOur team will contact you with the next steps.\n\n— City Delivery Services`,
+  };
+}
+
+function ownerContactEmail(m) {
+  const body =
+    section('Sender', row('Name', m.name) + row('Email', m.email)) +
+    section('Message', row('Subject', m.subject) + row('Message', m.message, { multiline: true })) +
+    `<tr><td style="padding-top:24px;">
+       <a href="mailto:${esc(m.email)}" style="display:inline-block;background:${BRAND.green};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 24px;border-radius:12px;">Reply</a>
+     </td></tr>`;
+  return {
+    subject: `New Contact Message - City Delivery Services${m.subject ? ` (${m.subject})` : ''}`.slice(0, 200),
+    html: layout({
+      preheader: `Message from ${m.name}`,
+      heading: 'New contact message',
+      intro: formatDate(m.createdAt),
+      body,
+      footer: 'Sent from the City Delivery Services contact form.',
+    }),
+    text: `New contact message\nFrom: ${m.name} <${m.email}>\nSubject: ${m.subject || '—'}\n\n${m.message}`,
+  };
+}
+
+module.exports = { ownerRequestEmail, customerConfirmationEmail, ownerContactEmail };
