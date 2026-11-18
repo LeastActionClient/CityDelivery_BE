@@ -111,14 +111,14 @@ async function retryPendingNotifications() {
         { 'ownerNotification.status': { $ne: 'sent' }, 'ownerNotification.attempts': { $lt: max } },
         { 'customerNotification.status': { $ne: 'sent' }, 'customerNotification.attempts': { $lt: max } },
       ],
-    }).limit(25);
+    }).setOptions({ sanitizeFilter: false }).limit(25);
     for (const r of requests) await notifyRequest(r);
 
     const contacts = await ContactMessage.find({
       createdAt: { $gte: since },
       'notification.status': { $ne: 'sent' },
       'notification.attempts': { $lt: max },
-    }).limit(25);
+    }).setOptions({ sanitizeFilter: false }).limit(25);
     for (const c of contacts) await notifyContact(c);
 
     if (requests.length || contacts.length) {

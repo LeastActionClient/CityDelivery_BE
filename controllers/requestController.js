@@ -62,7 +62,7 @@ exports.createRequest = async (req, res, next) => {
       productName: b.productName,
       storeName: b.storeName,
       createdAt: { $gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
-    });
+    }).setOptions({ sanitizeFilter: false });
     if (recent) {
       return res.status(200).json({ success: true, message: successMessage(recent, true), data: publicView(recent, { duplicate: true }) });
     }
@@ -147,8 +147,8 @@ exports.adminList = async (req, res, next) => {
       filter.$or = [{ 'ownerNotification.status': { $ne: 'sent' } }, { 'customerNotification.status': { $ne: 'sent' } }];
     }
     const [items, total] = await Promise.all([
-      ProductRequest.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      ProductRequest.countDocuments(filter),
+      ProductRequest.find(filter).setOptions({ sanitizeFilter: false }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      ProductRequest.countDocuments(filter).setOptions({ sanitizeFilter: false }),
     ]);
     res.json({ success: true, data: { items, total, page, pages: Math.ceil(total / limit) } });
   } catch (err) {
