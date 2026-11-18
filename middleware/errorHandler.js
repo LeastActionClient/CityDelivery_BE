@@ -30,6 +30,8 @@ function errorHandler(err, req, res, _next) {
       details = Object.fromEntries(
         Object.entries(err.errors || {}).map(([field, issue]) => [field, issue.message])
       );
+    } else if (err.path) {
+      details = { [err.path]: `Invalid value for ${err.path}.` };
     }
   } else if (err.message === 'Not allowed by CORS') {
     status = 403;
