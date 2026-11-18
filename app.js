@@ -40,6 +40,15 @@ app.use(
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    name: 'City Delivery Services API',
+    status: 'online',
+    health: '/api/health',
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     success: true,
