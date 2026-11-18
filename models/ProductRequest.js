@@ -19,14 +19,14 @@ const productRequestSchema = new mongoose.Schema(
     submissionKey: { type: String, unique: true, sparse: true, index: true },
 
     customerName: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
-    email: { type: String, required: true, trim: true, lowercase: true, maxlength: 120, index: true },
+    email: { type: String, trim: true, lowercase: true, maxlength: 120, default: '', index: true },
     phone: { type: String, required: true, trim: true, maxlength: 24 },
 
     productName: { type: String, required: true, trim: true, minlength: 2, maxlength: 120 },
     productCategory: { type: String, required: true, enum: CATEGORIES },
-    storeName: { type: String, required: true, trim: true, minlength: 2, maxlength: 120 },
-    storeLocation: { type: String, required: true, trim: true, minlength: 2, maxlength: 200 },
-    productDescription: { type: String, required: true, trim: true, minlength: 10, maxlength: 1500 },
+    storeName: { type: String, trim: true, maxlength: 120, default: '' },
+    storeLocation: { type: String, trim: true, maxlength: 200, default: '' },
+    productDescription: { type: String, trim: true, maxlength: 1500, default: '' },
     quantity: { type: Number, required: true, min: 1, max: 100, default: 1 },
     estimatedBudget: { type: Number, min: 0, max: 10000000, default: null },
     productImage: {

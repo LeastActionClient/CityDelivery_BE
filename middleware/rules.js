@@ -24,8 +24,8 @@ const submissionKeyRule = body('submissionKey')
 const productRequestRules = [
   text('customerName', { min: 2, max: 80, label: 'Name' }),
   body('email')
+    .optional({ values: 'falsy' })
     .trim()
-    .notEmpty().withMessage('Email is required.').bail()
     .isEmail().withMessage('Please enter a valid email address.').bail()
     .isLength({ max: 120 }).withMessage('Email is too long.')
     .normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false }),
@@ -40,9 +40,9 @@ const productRequestRules = [
   body('productCategory')
     .trim()
     .isIn(CATEGORIES).withMessage('Please choose a product category.'),
-  text('storeName', { min: 2, max: 120, label: 'Store name' }),
-  text('storeLocation', { min: 2, max: 200, label: 'Store location' }),
-  text('productDescription', { min: 10, max: 1500, label: 'Description', multiline: true }),
+  text('storeName', { min: 2, max: 120, label: 'Store name', optional: true }),
+  text('storeLocation', { min: 2, max: 200, label: 'Store location', optional: true }),
+  text('productDescription', { min: 10, max: 1500, label: 'Description', multiline: true, optional: true }),
   body('quantity')
     .optional({ values: 'falsy' })
     .isInt({ min: 1, max: 100 }).withMessage('Quantity must be between 1 and 100.')

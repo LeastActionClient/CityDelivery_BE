@@ -45,7 +45,7 @@ async function notifyRequest(requestDoc) {
     r.ownerNotification.lastAttemptAt = now;
     try {
       const mail = ownerRequestEmail(r);
-      await sendMail({ to: env.ownerEmail, replyTo: r.email, ...mail });
+      await sendMail({ to: env.ownerEmail, replyTo: r.email || undefined, ...mail });
       r.ownerNotification.status = 'sent';
       r.ownerNotification.sentAt = new Date();
       r.ownerNotification.lastError = undefined;
@@ -56,7 +56,9 @@ async function notifyRequest(requestDoc) {
     }
   }
 
-  if (r.customerNotification.status !== 'sent') {
+  if (!r.email) {
+    r.customerNotification.status = 'sent';
+  } else if (r.customerNotification.status !== 'sent') {
     r.customerNotification.attempts += 1;
     r.customerNotification.lastAttemptAt = now;
     try {

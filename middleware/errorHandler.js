@@ -26,6 +26,11 @@ function errorHandler(err, req, res, _next) {
   } else if (err.name === 'CastError' || err.name === 'ValidationError') {
     status = 422;
     message = 'Some of the submitted information is invalid.';
+    if (err.name === 'ValidationError') {
+      details = Object.fromEntries(
+        Object.entries(err.errors || {}).map(([field, issue]) => [field, issue.message])
+      );
+    }
   } else if (err.message === 'Not allowed by CORS') {
     status = 403;
   } else if (!err.isOperational) {

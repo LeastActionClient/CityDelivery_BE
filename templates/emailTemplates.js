@@ -98,9 +98,9 @@ function ownerRequestEmail(r) {
         row('Postal code', r.postalCode) +
         row('Additional instructions', r.additionalInstructions, { multiline: true })
     ) +
-    `<tr><td style="padding-top:24px;">
+    (r.email ? `<tr><td style="padding-top:24px;">
        <a href="mailto:${esc(r.email)}?subject=${encodeURIComponent('Your product request ' + r.requestId)}" style="display:inline-block;background:${BRAND.green};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 24px;border-radius:12px;">Reply to customer</a>
-     </td></tr>`;
+     </td></tr>` : '');
 
   return {
     subject: `New Product Request - City Delivery Services (#${r.requestId})`,
