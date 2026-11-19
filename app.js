@@ -28,11 +28,14 @@ app.use(
   cors({
     origin(origin, cb) {
       // Allow non-browser clients (curl, health checks) that send no Origin header.
-      if (!origin || env.frontendOrigins.includes(origin)) return cb(null, true);
+      if (!origin) return cb(null, true);
+      const normalized = String(origin).replace(/\/+$/, '').toLowerCase();
+      if (env.frontendOrigins.includes(normalized)) return cb(null, true);
       cb(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'x-api-key'],
+    optionsSuccessStatus: 204,
     maxAge: 600,
   })
 );
