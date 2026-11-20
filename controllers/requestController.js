@@ -4,7 +4,7 @@ const { generateRequestId } = require('../utils/generateRequestId');
 const { uploadProductImage, deleteImage } = require('../services/cloudinaryService');
 const { notifyRequest } = require('../services/emailService');
 const { env } = require('../config/env');
-const { STATUSES } = require('../utils/constants');
+const { STATUSES, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
 
 const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
 
@@ -95,6 +95,11 @@ exports.createRequest = async (req, res, next) => {
         city: b.city,
         postalCode: b.postalCode,
         additionalInstructions: b.additionalInstructions || '',
+        prohibitedItemsDeclaration: {
+          accepted: true,
+          acceptedAt: new Date(),
+          policyVersion: PROHIBITED_ITEMS_POLICY_VERSION,
+        },
       });
     } catch (err) {
       if (productImage?.publicId) await deleteImage(productImage.publicId);

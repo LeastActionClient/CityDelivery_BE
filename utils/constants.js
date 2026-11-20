@@ -11,6 +11,7 @@ const CATEGORIES = [
 
 const STATUSES = ['Pending', 'Reviewing', 'Contacted', 'Completed', 'Cancelled'];
 const NOTIFY_STATES = ['not_applicable', 'pending', 'sent', 'failed'];
+const PROHIBITED_ITEMS_POLICY_VERSION = '2026-11-20';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -63,6 +64,7 @@ module.exports = {
   CATEGORIES,
   STATUSES,
   NOTIFY_STATES,
+  PROHIBITED_ITEMS_POLICY_VERSION,
   MAX_IMAGE_BYTES,
   ALLOWED_IMAGE_MIME,
   RIDER_STATUSES,

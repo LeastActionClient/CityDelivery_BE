@@ -65,6 +65,10 @@ const productRequestRules = [
     .notEmpty().withMessage('Postal code is required.').bail()
     .matches(/^[A-Za-z0-9][A-Za-z0-9\s-]{2,10}$/).withMessage('Please enter a valid postal code.'),
   text('additionalInstructions', { max: 600, label: 'Instructions', multiline: true, optional: true }),
+  body('prohibitedItemsAccepted')
+    .isBoolean({ loose: true }).withMessage('Please confirm that your parcel contains only permitted items.').bail()
+    .toBoolean()
+    .custom((value) => value === true).withMessage('Please confirm that your parcel contains only permitted items.'),
   submissionKeyRule,
 ];
 

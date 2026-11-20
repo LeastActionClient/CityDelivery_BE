@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { CATEGORIES, STATUSES, NOTIFY_STATES } = require('../utils/constants');
+const { CATEGORIES, STATUSES, NOTIFY_STATES, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -41,6 +41,12 @@ const productRequestSchema = new mongoose.Schema(
     city: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
     postalCode: { type: String, required: true, trim: true, maxlength: 12 },
     additionalInstructions: { type: String, trim: true, maxlength: 600, default: '' },
+
+    prohibitedItemsDeclaration: {
+      accepted: { type: Boolean, required: true, default: false },
+      acceptedAt: { type: Date, required: true, default: Date.now },
+      policyVersion: { type: String, required: true, trim: true, maxlength: 40, default: PROHIBITED_ITEMS_POLICY_VERSION },
+    },
 
     status: { type: String, enum: STATUSES, default: 'Pending', index: true },
 
