@@ -8,6 +8,8 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 const requestRoutes = require('./routes/requestRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const riderRoutes = require('./routes/riderRoutes');
+const riderAdminRoutes = require('./routes/riderAdminRoutes');
 
 const app = express();
 
@@ -34,7 +36,7 @@ app.use(
       cb(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'x-api-key'],
+    allowedHeaders: ['Content-Type', 'x-api-key', 'x-rider-sensitive-key', 'x-admin-actor'],
     optionsSuccessStatus: 204,
     maxAge: 600,
   })
@@ -66,6 +68,8 @@ app.use('/api', apiLimiter);
 app.use('/api/requests', requestRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/riders', riderRoutes);
+app.use('/api/admin', riderAdminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

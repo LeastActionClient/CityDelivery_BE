@@ -15,8 +15,8 @@ function errorHandler(err, req, res, _next) {
   if (err instanceof multer.MulterError) {
     status = 422;
     if (err.code === 'LIMIT_FILE_SIZE') {
-      message = 'That image is too large. Please upload an image under 5 MB.';
-      details = { productImage: 'Image must be 5 MB or smaller.' };
+      message = 'That file is too large. Please upload a file under 5 MB.';
+      details = { [err.field || 'file']: 'File must be 5 MB or smaller.' };
     } else {
       message = 'The upload was rejected. Please check your files and try again.';
     }

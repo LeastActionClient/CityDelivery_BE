@@ -188,4 +188,148 @@ function ownerContactEmail(m) {
   };
 }
 
-module.exports = { ownerRequestEmail, customerConfirmationEmail, ownerContactEmail };
+function statusButton(statusUrl, label = 'Check application status') {
+  if (!statusUrl) return '';
+  return `<tr><td style="padding-top:24px;">
+     <a href="${esc(statusUrl)}" style="display:inline-block;background:${BRAND.green};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 24px;border-radius:12px;">${esc(label)}</a>
+   </td></tr>`;
+}
+
+function ownerRiderApplicationEmail(r) {
+  const body =
+    `<tr><td style="padding-top:20px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:14px;padding:9px 16px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+       <span style="display:inline-block;margin-left:8px;font-size:13px;color:${BRAND.muted};">${esc(formatDate(r.createdAt))}</span>
+     </td></tr>` +
+    section(
+      'Applicant',
+      row('Full name', r.personalInformation?.fullName) +
+        row('Mobile number', r.contactInformation?.mobile) +
+        row('Email', r.contactInformation?.email) +
+        row('Area', r.address?.area) +
+        row('City', r.address?.city) +
+        row('Pincode', r.address?.pincode)
+    ) +
+    section(
+      'Rider details',
+      row('Vehicle ownership', r.vehicleInformation?.ownsVehicle ? 'Own vehicle' : 'Needs assistance') +
+        row('Vehicle type', r.vehicleInformation?.vehicleType) +
+        row('Driving experience', r.drivingInformation?.experience) +
+        row('Preferred working area', r.workPreferences?.preferredWorkingArea) +
+        row('Work type', r.workPreferences?.workType) +
+        row('Preferred hours', r.workPreferences?.preferredWorkingHours) +
+        row('Documents uploaded', `${(r.uploadedDocuments && Object.keys(r.uploadedDocuments).length) || 0} file(s)`)
+    ) +
+    `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+       Bank, identity and document details are intentionally omitted from this email. Review them in the secure admin dashboard.
+     </td></tr>`;
+
+  return {
+    subject: `New Rider Application - City Delivery Services (#${r.applicationId})`,
+    html: layout({
+      preheader: `${r.personalInformation?.fullName} applied to become a rider.`,
+      heading: 'New rider application',
+      intro: 'A new rider application was submitted through the website.',
+      body,
+      footer: 'You are receiving this because this address is configured as OWNER_EMAIL for City Delivery Services.',
+    }),
+    text: [
+      `New rider application (#${r.applicationId})`,
+      `Submitted: ${formatDate(r.createdAt)}`,
+      '',
+      `Name: ${r.personalInformation?.fullName}`,
+      `Mobile: ${r.contactInformation?.mobile}`,
+      `Email: ${r.contactInformation?.email || '—'}`,
+      `Area: ${r.address?.area}, ${r.address?.city} - ${r.address?.pincode}`,
+      `Vehicle: ${r.vehicleInformation?.vehicleType || 'Not specified'}`,
+      `Preferred area: ${r.workPreferences?.preferredWorkingArea}`,
+      `Work type: ${r.workPreferences?.workType}`,
+      `Documents uploaded: ${(r.uploadedDocuments && Object.keys(r.uploadedDocuments).length) || 0}`,
+      '',
+      'Review bank, identity and document details in the secure admin dashboard.',
+    ].join('\n'),
+  };
+}
+
+function riderSubmissionEmail(r, statusUrl) {
+  const body =
+    `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
+       Hi ${esc(r.personalInformation?.fullName)},<br><br>
+       Thank you for your interest in riding with City Delivery Services. We have received your application and documents. Our team will review them and contact you about the next steps.
+     </td></tr>
+     <tr><td style="padding-top:18px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+     </td></tr>` +
+    section(
+      'Your application',
+      row('Vehicle type', r.vehicleInformation?.vehicleType) +
+        row('Preferred working area', r.workPreferences?.preferredWorkingArea) +
+        row('Work type', r.workPreferences?.workType) +
+        row('Current status', r.applicationStatus) +
+        row('Submitted', formatDate(r.createdAt))
+    ) +
+    `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+       Please keep your Application ID handy. This email confirms receipt only — it is not approval, an offer of work, or a guarantee of deliveries or income.
+     </td></tr>` +
+    statusButton(statusUrl);
+
+  return {
+    subject: 'Your Rider Application Has Been Received - City Delivery Services',
+    html: layout({
+      preheader: `Your rider application ID is ${r.applicationId}.`,
+      heading: 'Application received',
+      intro: 'We are reviewing your details.',
+      body,
+      footer: 'You are receiving this email because a rider application was submitted with this email address. If this was not you, you can ignore this message.',
+    }),
+    text: `Hi ${r.personalInformation?.fullName},\n\nWe have received your rider application.\n\nApplication ID: ${r.applicationId}\nStatus: ${r.applicationStatus}\nVehicle: ${r.vehicleInformation?.vehicleType || 'Not specified'}\nPreferred area: ${r.workPreferences?.preferredWorkingArea}\n\nCheck status: ${statusUrl || '—'}\n\nThis confirms receipt only — it is not approval or an offer of work.\n\n— City Delivery Services`,
+  };
+}
+
+function riderStatusUpdateEmail(r, { heading, preheader, intro, note, statusUrl, ctaLabel = 'Check application status' }) {
+  const body =
+    `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
+       Hi ${esc(r.personalInformation?.fullName)},<br><br>${intro}
+     </td></tr>
+     <tr><td style="padding-top:18px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+     </td></tr>` +
+    section('Current status', row('Status', r.applicationStatus) + (r.riderId ? row('Rider ID', r.riderId) : '')) +
+    (note ? `<tr><td style="padding-top:20px;font-size:14px;line-height:1.65;color:${BRAND.text};white-space:pre-wrap;">${esc(note)}</td></tr>` : '') +
+    statusButton(statusUrl, ctaLabel);
+
+  return {
+    subject: `${heading} - City Delivery Services`,
+    html: layout({
+      preheader,
+      heading,
+      intro: `Update on your rider application ${r.applicationId}.`,
+      body,
+      footer: 'You are receiving this email because a rider application was submitted with this email address. If this was not you, you can ignore this message.',
+    }),
+    text: [
+      `Hi ${r.personalInformation?.fullName},`,
+      '',
+      intro.replace(/<[^>]*>/g, ''),
+      '',
+      `Application ID: ${r.applicationId}`,
+      `Status: ${r.applicationStatus}`,
+      r.riderId ? `Rider ID: ${r.riderId}` : '',
+      note || '',
+      statusUrl ? `${ctaLabel}: ${statusUrl}` : '',
+      '',
+      '— City Delivery Services',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  };
+}
+
+module.exports = {
+  ownerRequestEmail,
+  customerConfirmationEmail,
+  ownerContactEmail,
+  ownerRiderApplicationEmail,
+  riderSubmissionEmail,
+  riderStatusUpdateEmail,
+};

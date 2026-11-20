@@ -4,7 +4,7 @@ const json429 = (message) => (_req, res) => res.status(429).json({ success: fals
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 200,
+  limit: 500,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   handler: json429('Too many requests. Please try again in a few minutes.'),
@@ -20,10 +20,33 @@ const submissionLimiter = rateLimit({
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 60,
+  limit: 500,
+  skipSuccessfulRequests: true,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: json429('Too many requests.'),
+  handler: json429('Too many admin requests. Please wait a few minutes.'),
 });
 
-module.exports = { apiLimiter, submissionLimiter, adminLimiter };
+const riderSubmissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: json429('You have submitted several rider applications recently. Please try again later.'),
+});
+
+const riderStatusLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: json429('Too many status checks. Please try again in a few minutes.'),
+});
+
+module.exports = {
+  apiLimiter,
+  submissionLimiter,
+  adminLimiter,
+  riderSubmissionLimiter,
+  riderStatusLimiter,
+};
