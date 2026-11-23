@@ -33,6 +33,7 @@ app.use(
       if (!origin) return cb(null, true);
       const normalized = String(origin).replace(/\/+$/, '').toLowerCase();
       if (env.frontendOrigins.includes(normalized)) return cb(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) return cb(null, true);
       cb(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
