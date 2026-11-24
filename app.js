@@ -10,6 +10,9 @@ const contactRoutes = require('./routes/contactRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const riderRoutes = require('./routes/riderRoutes');
 const riderAdminRoutes = require('./routes/riderAdminRoutes');
+const franchiseRoutes = require('./routes/franchiseRoutes');
+const franchiseAdminRoutes = require('./routes/franchiseAdminRoutes');
+const franchiseWebhookRoutes = require('./routes/franchiseWebhookRoutes');
 
 const app = express();
 
@@ -37,10 +40,18 @@ app.use(
       cb(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'x-api-key', 'x-rider-sensitive-key', 'x-admin-actor'],
+    allowedHeaders: ['Content-Type', 'x-api-key', 'x-rider-sensitive-key', 'x-admin-actor', 'x-admin-role'],
     optionsSuccessStatus: 204,
     maxAge: 600,
   })
+);
+
+// Cashfree signs the exact raw body. Mount this before express.json().
+app.use(
+  '/api/franchises/webhook',
+  apiLimiter,
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  franchiseWebhookRoutes
 );
 
 app.use(express.json({ limit: '20kb' }));
@@ -62,6 +73,7 @@ app.get('/api/health', (_req, res) => {
     db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     smtpConfigured: env.smtpConfigured,
     cloudinaryConfigured: env.cloudinaryConfigured,
+    cashfreeConfigured: env.cashfreeConfigured,
   });
 });
 
@@ -71,6 +83,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/riders', riderRoutes);
 app.use('/api/admin', riderAdminRoutes);
+app.use('/api/franchises', franchiseRoutes);
+app.use('/api/admin', franchiseAdminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

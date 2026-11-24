@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { env } = require('../config/env');
 const AppError = require('../utils/AppError');
+const { FRANCHISE_ADMIN_ROLES } = require('../utils/constants');
 
 /** Protects admin endpoints with a static key sent as `x-api-key` (timing-safe compare). */
 function requireAdmin(req, _res, next) {
@@ -38,4 +39,25 @@ function optionalRiderSensitiveAccess(req, _res, next) {
   next();
 }
 
-module.exports = { requireAdmin, requireRiderSensitiveAccess, optionalRiderSensitiveAccess };
+function requireFranchiseRole(...allowedRoles) {
+  return (req, _res, next) => {
+    const requested = String(req.get('x-admin-role') || env.franchise.defaultAdminRole || 'owner')
+      .trim()
+      .toLowerCase();
+    if (!FRANCHISE_ADMIN_ROLES.includes(requested)) {
+      return next(new AppError('Invalid franchise admin role.', 403));
+    }
+    req.franchiseRole = requested;
+    if (!allowedRoles.includes(requested)) {
+      return next(new AppError('Your admin role cannot perform this action.', 403));
+    }
+    next();
+  };
+}
+
+module.exports = {
+  requireAdmin,
+  requireRiderSensitiveAccess,
+  optionalRiderSensitiveAccess,
+  requireFranchiseRole,
+};

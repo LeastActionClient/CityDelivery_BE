@@ -60,6 +60,37 @@ const RIDER_SENSITIVE_DOCUMENT_KEYS = [
 ];
 const ALLOWED_DOCUMENT_MIME = [...ALLOWED_IMAGE_MIME, 'application/pdf'];
 
+const FRANCHISE_STATUSES = [
+  'Payment Pending',
+  'Payment Successful',
+  'Under Review',
+  'Approved',
+  'Rejected',
+  'Agreement Pending',
+  'Active Franchise',
+];
+const FRANCHISE_PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
+const FRANCHISE_REFUND_POLICIES = ['Refundable', 'Non-refundable'];
+const FRANCHISE_INVESTMENT_CAPACITIES = [
+  'Below ₹1,00,000',
+  '₹1,00,000 – ₹3,00,000',
+  '₹3,00,000 – ₹5,00,000',
+  'Above ₹5,00,000',
+];
+const FRANCHISE_DOCUMENT_KEYS = ['businessProof', 'addressProof', 'otherProof'];
+const FRANCHISE_VEHICLE_TYPES = [
+  'Bike',
+  'Scooter',
+  'Electric Bike',
+  'Car',
+  'Three Wheeler',
+  'Pickup Van',
+  'Delivery Van',
+  'Lorry',
+  'Other',
+];
+const FRANCHISE_ADMIN_ROLES = ['owner', 'franchise_manager', 'support'];
+
 module.exports = {
   CATEGORIES,
   STATUSES,
@@ -76,4 +107,11 @@ module.exports = {
   RIDER_PUBLIC_DOCUMENT_KEYS,
   RIDER_SENSITIVE_DOCUMENT_KEYS,
   ALLOWED_DOCUMENT_MIME,
+  FRANCHISE_STATUSES,
+  FRANCHISE_PAYMENT_STATUSES,
+  FRANCHISE_REFUND_POLICIES,
+  FRANCHISE_INVESTMENT_CAPACITIES,
+  FRANCHISE_DOCUMENT_KEYS,
+  FRANCHISE_VEHICLE_TYPES,
+  FRANCHISE_ADMIN_ROLES,
 };

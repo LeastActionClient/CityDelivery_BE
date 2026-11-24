@@ -43,6 +43,16 @@ const env = {
   },
   adminApiKey: process.env.ADMIN_API_KEY,
   riderSensitiveApiKey: process.env.RIDER_SENSITIVE_API_KEY,
+  cashfree: {
+    clientId: process.env.CASHFREE_CLIENT_ID,
+    clientSecret: process.env.CASHFREE_CLIENT_SECRET,
+    environment: (process.env.CASHFREE_ENVIRONMENT || 'sandbox').toLowerCase(),
+    apiVersion: process.env.CASHFREE_API_VERSION || '2026-01-01',
+    webhookUrl: process.env.CASHFREE_WEBHOOK_URL,
+  },
+  franchise: {
+    defaultAdminRole: (process.env.FRANCHISE_ADMIN_DEFAULT_ROLE || 'owner').toLowerCase(),
+  },
   notify: {
     intervalMinutes: Number(process.env.NOTIFY_RETRY_INTERVAL_MINUTES) || 5,
     maxAttempts: Number(process.env.NOTIFY_MAX_ATTEMPTS) || 5,
@@ -52,6 +62,11 @@ const env = {
 env.smtpConfigured = Boolean(env.smtp.host && env.smtp.user && env.smtp.pass && env.ownerEmail);
 env.cloudinaryConfigured = Boolean(
   env.cloudinary.cloudName && env.cloudinary.apiKey && env.cloudinary.apiSecret
+);
+env.cashfreeConfigured = Boolean(
+  env.cashfree.clientId &&
+    env.cashfree.clientSecret &&
+    ['sandbox', 'production'].includes(env.cashfree.environment)
 );
 
 function assertEnv() {
@@ -70,6 +85,9 @@ function assertEnv() {
   }
   if (!env.riderSensitiveApiKey) {
     console.warn('[config] RIDER_SENSITIVE_API_KEY is not set — rider bank, identity and document endpoints are disabled.');
+  }
+  if (!env.cashfreeConfigured) {
+    console.warn('[config] Cashfree is not fully configured — franchise payment orders are disabled until credentials are added.');
   }
 }
 

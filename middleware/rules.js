@@ -5,6 +5,10 @@ const {
   RIDER_VEHICLE_TYPES,
   RIDER_GENDERS,
   RIDER_AVAILABILITY_DAYS,
+  FRANCHISE_INVESTMENT_CAPACITIES,
+  FRANCHISE_STATUSES,
+  FRANCHISE_REFUND_POLICIES,
+  FRANCHISE_VEHICLE_TYPES,
 } = require('../utils/constants');
 const { cleanText } = require('../utils/sanitize');
 
@@ -190,4 +194,123 @@ const riderStatusRules = [
     .matches(/^RIDER-\d{8}-[A-Z0-9]{6}$/).withMessage('Please enter a valid application ID.'),
 ];
 
-module.exports = { productRequestRules, contactRules, riderRegistrationRules, riderStatusRules };
+const vehicleText = (value) => String(value ?? '').trim();
+
+const vehicleDetailsRule = body('vehicles')
+  .optional({ values: 'falsy' })
+  .custom((value) => {
+    if (value === undefined || value === null || value === '') return true;
+    if (!Array.isArray(value)) throw new Error('Vehicle details must be submitted as a list.');
+    if (value.length > FRANCHISE_VEHICLE_TYPES.length) throw new Error('Too many vehicle types were submitted.');
+    value.forEach((row, index) => {
+      const item = row && typeof row === 'object' ? row : {};
+      if (!vehicleText(item.count)) return;
+      if (!FRANCHISE_VEHICLE_TYPES.includes(vehicleText(item.type))) {
+        throw new Error(`Vehicle ${index + 1}: please choose a valid vehicle type.`);
+      }
+      if (vehicleText(item.type) === 'Other' && !vehicleText(item.otherType)) {
+        throw new Error('Please describe the other vehicle type.');
+      }
+      const count = Number(item.count);
+      if (!Number.isInteger(count) || count < 0 || count > 1000) {
+        throw new Error(`${vehicleText(item.type)} count must be between 0 and 1000.`);
+      }
+      if (vehicleText(item.otherType).length > 80) throw new Error('Other vehicle type is too long.');
+    });
+    return true;
+  });
+
+const franchiseRegistrationRules = [
+  text('fullName', { min: 2, max: 80, label: 'Full name' }),
+  phoneRule('mobile', 'Mobile number'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email address is required.').bail()
+    .isEmail().withMessage('Please enter a valid email address.').bail()
+    .isLength({ max: 120 }).withMessage('Email is too long.')
+    .normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false }),
+  text('state', { min: 2, max: 80, label: 'State' }),
+  text('district', { min: 2, max: 80, label: 'District' }),
+  text('city', { min: 2, max: 80, label: 'City / town' }),
+  text('preferredOperatingArea', { min: 2, max: 160, label: 'Preferred operating area' }),
+  body('pincode')
+    .customSanitizer((v) => cleanText(v))
+    .notEmpty().withMessage('PIN code is required.').bail()
+    .matches(/^[1-9][0-9]{5}$/).withMessage('Please enter a valid 6-digit PIN code.'),
+  text('fullAddress', { min: 5, max: 300, label: 'Full address', multiline: true }),
+  text('businessExperience', { max: 1000, label: 'Business experience', multiline: true, optional: true }),
+  body('investmentCapacity')
+    .trim()
+    .notEmpty().withMessage('Please choose an investment capacity.').bail()
+    .isIn(FRANCHISE_INVESTMENT_CAPACITIES).withMessage('Please choose a valid investment capacity.'),
+  body('hasOfficeOrShop')
+    .notEmpty().withMessage('Please tell us whether you have an office or shop.').bail()
+    .isBoolean({ loose: true }).withMessage('Invalid office or shop value.').bail()
+    .toBoolean(),
+  body('numberOfVehicles')
+    .optional({ values: 'falsy' })
+    .isInt({ min: 0, max: 10000 }).withMessage('Please enter a valid number of vehicles.')
+    .toInt(),
+  vehicleDetailsRule,
+  text('motivation', { max: 1500, label: 'Why you want to become a franchise partner', multiline: true, optional: true }),
+  body('consents.accurate').isBoolean({ loose: true }).toBoolean().custom((v) => v === true).withMessage('Please confirm your information is accurate.'),
+  body('consents.contact').isBoolean({ loose: true }).toBoolean().custom((v) => v === true).withMessage('Please agree to be contacted about your application.'),
+  submissionKeyRule,
+];
+
+const franchiseStatusRules = [
+  body('applicationId')
+    .customSanitizer((v) => cleanText(v).toUpperCase())
+    .notEmpty().withMessage('Application ID is required.').bail()
+    .matches(/^FRANCH-\d{8}-[A-Z0-9]{6}$/).withMessage('Please enter a valid application ID.'),
+];
+
+const franchisePaymentRules = [
+  body('applicationId')
+    .customSanitizer((v) => cleanText(v).toUpperCase())
+    .notEmpty().withMessage('Application ID is required.').bail()
+    .matches(/^FRANCH-\d{8}-[A-Z0-9]{6}$/).withMessage('Please enter a valid application ID.'),
+];
+
+const franchiseAdminStatusRules = [
+  body('status')
+    .trim()
+    .notEmpty().withMessage('Status is required.').bail()
+    .isIn(FRANCHISE_STATUSES).withMessage('Please choose a valid status.'),
+  text('reason', { max: 1000, label: 'Reason', multiline: true, optional: true }),
+];
+
+const franchiseInfoRules = [
+  text('message', { min: 3, max: 1000, label: 'Message', multiline: true }),
+];
+
+const franchiseNoteRules = [
+  text('text', { min: 2, max: 1000, label: 'Note', multiline: true }),
+];
+
+const franchiseMarkPaidRules = [
+  text('reference', { max: 120, label: 'Payment reference', optional: true }),
+  text('note', { max: 500, label: 'Note', multiline: true, optional: true }),
+];
+
+const franchiseSettingsRules = [
+  body('applicationFee').isFloat({ min: 1, max: 100000 }).withMessage('Initial payment must be between ₹1 and ₹1,00,000.').toFloat(),
+  body('refundPolicy').trim().isIn(FRANCHISE_REFUND_POLICIES).withMessage('Please choose a valid refund policy.'),
+  text('refundPolicyDetails', { max: 1000, label: 'Refund policy details', multiline: true, optional: true }),
+  text('paymentInstructions', { max: 1000, label: 'Payment instructions', multiline: true, optional: true }),
+];
+
+module.exports = {
+  productRequestRules,
+  contactRules,
+  riderRegistrationRules,
+  riderStatusRules,
+  franchiseRegistrationRules,
+  franchiseStatusRules,
+  franchisePaymentRules,
+  franchiseAdminStatusRules,
+  franchiseInfoRules,
+  franchiseNoteRules,
+  franchiseMarkPaidRules,
+  franchiseSettingsRules,
+};

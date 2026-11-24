@@ -325,6 +325,156 @@ function riderStatusUpdateEmail(r, { heading, preheader, intro, note, statusUrl,
   };
 }
 
+function ownerFranchiseApplicationEmail(r) {
+  const fee = r.feeSnapshot
+    ? `${r.feeSnapshot.currency || 'INR'} ${Number(r.feeSnapshot.amount || 0).toLocaleString('en-IN')} · ${r.feeSnapshot.refundPolicy || ''}`
+    : '';
+  const body =
+    `<tr><td style="padding-top:20px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:14px;padding:9px 16px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+       <span style="display:inline-block;margin-left:8px;font-size:13px;color:${BRAND.muted};">${esc(formatDate(r.createdAt))}</span>
+     </td></tr>` +
+    section(
+      'Applicant',
+      row('Full name', r.fullName) +
+        row('Mobile number', r.mobile) +
+        row('Email', r.email)
+    ) +
+    section(
+      'Proposed location',
+      row('State', r.location?.state) +
+        row('District', r.location?.district) +
+        row('City / town', r.location?.city) +
+        row('Preferred operating area', r.location?.preferredOperatingArea) +
+        row('PIN code', r.location?.pincode) +
+        row('Full address', r.location?.fullAddress, { multiline: true })
+    ) +
+    section(
+      'Business details',
+      row('Business experience', r.business?.experience, { multiline: true }) +
+        row('Investment capacity', r.business?.investmentCapacity) +
+        row('Office / shop available', r.business?.hasOfficeOrShop ? 'Yes' : 'No') +
+        row('Number of vehicles', r.business?.numberOfVehicles ?? 0) +
+        row('Why they want to partner', r.business?.motivation, { multiline: true })
+    ) +
+    section(
+      'Initial payment',
+      row('Amount shown to applicant', fee) +
+        row('Payment status', r.payment?.status) +
+        row('Documents uploaded', `${(r.uploadedDocuments && Object.keys(r.uploadedDocuments).length) || 0} file(s)`)
+    ) +
+    `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+       Review transaction details and documents in the secure admin dashboard.
+     </td></tr>`;
+
+  return {
+    subject: `New Franchise Application - City Delivery Services (#${r.applicationId})`,
+    html: layout({
+      preheader: `${r.fullName} applied to become a franchise partner.`,
+      heading: 'New franchise application',
+      intro: 'A new franchise partner application was submitted through the website.',
+      body,
+      footer: 'You are receiving this because this address is configured as OWNER_EMAIL for City Delivery Services.',
+    }),
+    text: [
+      `New franchise application (#${r.applicationId})`,
+      `Submitted: ${formatDate(r.createdAt)}`,
+      `Name: ${r.fullName}`,
+      `Mobile: ${r.mobile}`,
+      `Email: ${r.email}`,
+      `Location: ${r.location?.preferredOperatingArea}, ${r.location?.city}, ${r.location?.district}, ${r.location?.state} - ${r.location?.pincode}`,
+      `Investment capacity: ${r.business?.investmentCapacity}`,
+      `Fee: ${fee || '—'}`,
+      `Payment status: ${r.payment?.status}`,
+      '',
+      'Review transaction details and documents in the secure admin dashboard.',
+    ].join('\n'),
+  };
+}
+
+function franchiseSubmissionEmail(r, statusUrl) {
+  const fee = r.feeSnapshot
+    ? `${r.feeSnapshot.currency || 'INR'} ${Number(r.feeSnapshot.amount || 0).toLocaleString('en-IN')}`
+    : '';
+  const body =
+    `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
+       Hi ${esc(r.fullName)},<br><br>
+       Thank you for your interest in becoming a City Delivery Services franchise partner. We have received your application and will contact you about the next steps.
+     </td></tr>
+     <tr><td style="padding-top:18px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+     </td></tr>` +
+    section(
+      'Your application',
+      row('Proposed area', r.location?.preferredOperatingArea) +
+        row('City / town', r.location?.city) +
+        row('Initial payment shown', fee) +
+        row('Payment policy', r.feeSnapshot?.refundPolicy) +
+        row('Current status', r.applicationStatus)
+    ) +
+    (r.feeSnapshot?.refundPolicyDetails
+      ? `<tr><td style="padding-top:20px;font-size:14px;line-height:1.65;color:${BRAND.text};white-space:pre-wrap;">${esc(r.feeSnapshot.refundPolicyDetails)}</td></tr>`
+      : '') +
+    `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+       Submission does not guarantee approval, an agreement, exclusive territory or any income. All franchise terms are confirmed only after review and a written agreement.
+     </td></tr>` +
+    statusButton(statusUrl);
+
+  return {
+    subject: 'Your Franchise Application Has Been Received - City Delivery Services',
+    html: layout({
+      preheader: `Your franchise application ID is ${r.applicationId}.`,
+      heading: 'Application received',
+      intro: 'We are reviewing your franchise application.',
+      body,
+      footer: 'You are receiving this email because a franchise application was submitted with this email address. If this was not you, you can ignore this message.',
+    }),
+    text: `Hi ${r.fullName},\n\nWe have received your franchise application.\n\nApplication ID: ${r.applicationId}\nArea: ${r.location?.preferredOperatingArea || '—'}\nCity: ${r.location?.city || '—'}\nInitial payment: ${fee || '—'}\nPayment policy: ${r.feeSnapshot?.refundPolicy || '—'}\nStatus: ${r.applicationStatus}\n\nCheck status: ${statusUrl || '—'}\n\nSubmission does not guarantee approval, an agreement, territory or income.\n\n— City Delivery Services`,
+  };
+}
+
+function franchiseStatusUpdateEmail(r, { heading, preheader, intro, note, statusUrl, ctaLabel = 'Check application status' }) {
+  const body =
+    `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
+       Hi ${esc(r.fullName)},<br><br>${intro}
+     </td></tr>
+     <tr><td style="padding-top:18px;">
+       <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Application ID: ${esc(r.applicationId)}</span>
+     </td></tr>` +
+    section(
+      'Current status',
+      row('Status', r.applicationStatus) + (r.franchiseId ? row('Franchise ID', r.franchiseId) : '')
+    ) +
+    (note ? `<tr><td style="padding-top:20px;font-size:14px;line-height:1.65;color:${BRAND.text};white-space:pre-wrap;">${esc(note)}</td></tr>` : '') +
+    statusButton(statusUrl, ctaLabel);
+
+  return {
+    subject: `${heading} - City Delivery Services`,
+    html: layout({
+      preheader,
+      heading,
+      intro: `Update on your franchise application ${r.applicationId}.`,
+      body,
+      footer: 'You are receiving this email because a franchise application was submitted with this email address. If this was not you, you can ignore this message.',
+    }),
+    text: [
+      `Hi ${r.fullName},`,
+      '',
+      intro.replace(/<[^>]*>/g, ''),
+      '',
+      `Application ID: ${r.applicationId}`,
+      `Status: ${r.applicationStatus}`,
+      r.franchiseId ? `Franchise ID: ${r.franchiseId}` : '',
+      note || '',
+      statusUrl ? `${ctaLabel}: ${statusUrl}` : '',
+      '',
+      '— City Delivery Services',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  };
+}
+
 module.exports = {
   ownerRequestEmail,
   customerConfirmationEmail,
@@ -332,4 +482,7 @@ module.exports = {
   ownerRiderApplicationEmail,
   riderSubmissionEmail,
   riderStatusUpdateEmail,
+  ownerFranchiseApplicationEmail,
+  franchiseSubmissionEmail,
+  franchiseStatusUpdateEmail,
 };

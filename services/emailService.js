@@ -3,6 +3,7 @@ const { env } = require('../config/env');
 const ProductRequest = require('../models/ProductRequest');
 const ContactMessage = require('../models/ContactMessage');
 const RiderApplication = require('../models/RiderApplication');
+const FranchiseApplication = require('../models/FranchiseApplication');
 const {
   ownerRequestEmail,
   customerConfirmationEmail,
@@ -10,6 +11,9 @@ const {
   ownerRiderApplicationEmail,
   riderSubmissionEmail,
   riderStatusUpdateEmail,
+  ownerFranchiseApplicationEmail,
+  franchiseSubmissionEmail,
+  franchiseStatusUpdateEmail,
 } = require('../templates/emailTemplates');
 
 let transporter;
@@ -200,6 +204,142 @@ async function notifyRiderUpdate(doc, type) {
   return state.status;
 }
 
+function franchiseStatusUrl() {
+  return `${env.frontendUrl}/franchise/status`;
+}
+
+async function notifyFranchiseApplication(doc) {
+  const state = doc.notifications.submitted;
+  state.attempts += 1;
+  let failed = false;
+
+  try {
+    await sendMail({
+      to: env.ownerEmail,
+      replyTo: doc.email || undefined,
+      ...ownerFranchiseApplicationEmail(doc),
+    });
+  } catch (err) {
+    failed = true;
+    console.error(`[mail] owner franchise notification failed for ${doc.applicationId}:`, shortError(err));
+  }
+
+  if (doc.email) {
+    try {
+      await sendMail({
+        to: doc.email,
+        replyTo: env.ownerEmail,
+        ...franchiseSubmissionEmail(doc, franchiseStatusUrl()),
+      });
+    } catch (err) {
+      failed = true;
+      console.error(`[mail] franchise confirmation failed for ${doc.applicationId}:`, shortError(err));
+    }
+  }
+
+  state.status = failed ? 'failed' : 'sent';
+  state.lastError = failed ? 'One or more franchise emails failed.' : undefined;
+  if (!failed) state.sentAt = new Date();
+  await doc.save();
+  return state.status;
+}
+
+const FRANCHISE_UPDATE_MAIL = {
+  paymentSuccess: {
+    heading: 'Franchise Application Fee Received',
+    preheader: 'Your franchise initial payment was successful.',
+    intro: 'We have recorded your franchise initial payment. Your application will now be reviewed.',
+    ctaLabel: 'View your status',
+  },
+  underReview: {
+    heading: 'Franchise Application Under Review',
+    preheader: 'Your franchise application is being reviewed.',
+    intro: 'Our team is reviewing your franchise application. No action is needed right now.',
+    ctaLabel: 'View your status',
+  },
+  approved: {
+    heading: 'Franchise Application Approved',
+    preheader: 'Your franchise application has been approved.',
+    intro: 'Your franchise application has been approved. Our team will contact you with agreement and onboarding details.',
+    ctaLabel: 'View your status',
+  },
+  rejected: {
+    heading: 'Franchise Application Update',
+    preheader: 'An update on your franchise application.',
+    intro: 'Thank you for your interest in becoming a franchise partner. After review, we are unable to move forward with this application.',
+    ctaLabel: 'View your status',
+  },
+  additionalInfoRequested: {
+    heading: 'More Information Requested',
+    preheader: 'We need more information for your franchise application.',
+    intro: 'Our team has requested more information for your franchise application. Please check the message below and contact us with the details.',
+    ctaLabel: 'View your status',
+  },
+  agreementPending: {
+    heading: 'Franchise Agreement Pending',
+    preheader: 'Your franchise agreement steps are being prepared.',
+    intro: 'Your application is approved and the agreement steps are being prepared. Our team will contact you with the next instructions.',
+    ctaLabel: 'View your status',
+  },
+  activated: {
+    heading: 'Franchise Activated',
+    preheader: 'Your franchise is now active.',
+    intro: 'Your franchise has been activated. Our team will contact you with operating details.',
+    ctaLabel: 'View your status',
+  },
+};
+
+async function notifyFranchiseUpdate(doc, type) {
+  const config = FRANCHISE_UPDATE_MAIL[type];
+  if (!config) return null;
+  const state = doc.notifications?.[type];
+  if (!state) return null;
+  state.attempts += 1;
+  const to = doc.email;
+  if (!to) {
+    state.status = 'sent';
+    state.lastError = undefined;
+    await doc.save();
+    return state.status;
+  }
+
+  const note = type === 'rejected'
+    ? doc.rejectionReason
+    : type === 'additionalInfoRequested'
+      ? doc.infoRequest?.message
+      : '';
+
+  try {
+    await sendMail({
+      to,
+      replyTo: env.ownerEmail,
+      ...franchiseStatusUpdateEmail(doc, { ...config, note, statusUrl: franchiseStatusUrl() }),
+    });
+    state.status = 'sent';
+    state.sentAt = new Date();
+    state.lastError = undefined;
+  } catch (err) {
+    state.status = 'failed';
+    state.lastError = shortError(err);
+    console.error(`[mail] franchise ${type} notification failed for ${doc.applicationId}:`, shortError(err));
+  }
+  await doc.save();
+  return state.status;
+}
+
+function franchiseUpdateDue(doc, key) {
+  const state = doc.notifications?.[key];
+  if (!state || state.status === 'sent' || state.status === 'not_applicable') return false;
+  if (key === 'paymentSuccess') return doc.payment?.status === 'PAID';
+  if (key === 'underReview') return doc.applicationStatus === 'Under Review';
+  if (key === 'approved') return doc.applicationStatus === 'Approved' || Boolean(doc.approvedAt);
+  if (key === 'rejected') return doc.applicationStatus === 'Rejected' || Boolean(doc.rejectionReason);
+  if (key === 'additionalInfoRequested') return Boolean(doc.infoRequest?.message);
+  if (key === 'agreementPending') return doc.applicationStatus === 'Agreement Pending';
+  if (key === 'activated') return doc.applicationStatus === 'Active Franchise' || Boolean(doc.activatedAt);
+  return false;
+}
+
 async function archiveInapplicableRiderNotifications() {
   const jobs = [
     ['approval', { approvedAt: { $exists: false }, applicationStatus: { $ne: 'Approved' } }],
@@ -278,8 +418,37 @@ async function retryPendingNotifications() {
       }
     }
 
-    if (requests.length || contacts.length || riders.length) {
-      console.log(`[mail] retry pass: ${requests.length} request(s), ${contacts.length} contact message(s), ${riders.length} rider application(s)`);
+    const franchiseKeys = [
+      'submitted',
+      'paymentSuccess',
+      'underReview',
+      'approved',
+      'rejected',
+      'additionalInfoRequested',
+      'agreementPending',
+      'activated',
+    ];
+    const franchiseOr = franchiseKeys.map((key) => ({
+      $and: [
+        { [`notifications.${key}.status`]: { $in: ['pending', 'failed'] } },
+        { [`notifications.${key}.attempts`]: { $lt: max } },
+      ],
+    }));
+    const franchises = await FranchiseApplication.find({
+      createdAt: { $gte: since },
+      $or: franchiseOr,
+    }).setOptions({ sanitizeFilter: false }).limit(25);
+    for (const f of franchises) {
+      if (f.notifications.submitted.status !== 'sent' && f.notifications.submitted.attempts < max) {
+        await notifyFranchiseApplication(f);
+      }
+      for (const key of franchiseKeys.slice(1)) {
+        if (franchiseUpdateDue(f, key) && f.notifications[key].attempts < max) await notifyFranchiseUpdate(f, key);
+      }
+    }
+
+    if (requests.length || contacts.length || riders.length || franchises.length) {
+      console.log(`[mail] retry pass: ${requests.length} request(s), ${contacts.length} contact message(s), ${riders.length} rider application(s), ${franchises.length} franchise application(s)`);
     }
   } catch (err) {
     console.error('[mail] retry worker error:', shortError(err));
@@ -301,6 +470,9 @@ module.exports = {
   notifyRiderApplication,
   notifyRiderUpdate,
   riderUpdateDue,
+  notifyFranchiseApplication,
+  notifyFranchiseUpdate,
+  franchiseUpdateDue,
   retryPendingNotifications,
   startRetryWorker,
 };
