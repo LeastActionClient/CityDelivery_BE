@@ -12,6 +12,8 @@ const riderRoutes = require('./routes/riderRoutes');
 const riderAdminRoutes = require('./routes/riderAdminRoutes');
 const franchiseRoutes = require('./routes/franchiseRoutes');
 const franchiseAdminRoutes = require('./routes/franchiseAdminRoutes');
+const siteRoutes = require('./routes/siteRoutes');
+const siteAdminRoutes = require('./routes/siteAdminRoutes');
 
 const app = express();
 
@@ -75,6 +77,8 @@ app.use('/api/riders', riderRoutes);
 app.use('/api/admin', riderAdminRoutes);
 app.use('/api/franchises', franchiseRoutes);
 app.use('/api/admin', franchiseAdminRoutes);
+app.use('/api/site', siteRoutes);
+app.use('/api/admin', siteAdminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
