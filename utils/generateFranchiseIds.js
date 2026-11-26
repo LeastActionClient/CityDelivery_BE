@@ -24,9 +24,4 @@ function generateFranchiseId(date = new Date()) {
   return `CDSF-${datePart(date)}-${randomChars(6)}`;
 }
 
-function generateFranchiseOrderId(applicationId, attempt) {
-  const safeId = String(applicationId).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30);
-  return `FRANCHISE_${safeId}_${Number(attempt) || 1}`;
-}
-
-module.exports = { generateFranchiseApplicationId, generateFranchiseId, generateFranchiseOrderId };
+module.exports = { generateFranchiseApplicationId, generateFranchiseId };

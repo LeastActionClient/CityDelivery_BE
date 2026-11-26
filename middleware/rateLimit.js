@@ -59,14 +59,6 @@ const franchiseStatusLimiter = rateLimit({
   handler: json429('Too many status checks. Please try again in a few minutes.'),
 });
 
-const franchisePaymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: json429('Too many payment attempts. Please wait a few minutes.'),
-});
-
 module.exports = {
   apiLimiter,
   submissionLimiter,
@@ -75,5 +67,4 @@ module.exports = {
   riderStatusLimiter,
   franchiseSubmissionLimiter,
   franchiseStatusLimiter,
-  franchisePaymentLimiter,
 };

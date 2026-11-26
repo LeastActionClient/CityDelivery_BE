@@ -265,13 +265,6 @@ const franchiseStatusRules = [
     .matches(/^FRANCH-\d{8}-[A-Z0-9]{6}$/).withMessage('Please enter a valid application ID.'),
 ];
 
-const franchisePaymentRules = [
-  body('applicationId')
-    .customSanitizer((v) => cleanText(v).toUpperCase())
-    .notEmpty().withMessage('Application ID is required.').bail()
-    .matches(/^FRANCH-\d{8}-[A-Z0-9]{6}$/).withMessage('Please enter a valid application ID.'),
-];
-
 const franchiseAdminStatusRules = [
   body('status')
     .trim()
@@ -307,7 +300,6 @@ module.exports = {
   riderStatusRules,
   franchiseRegistrationRules,
   franchiseStatusRules,
-  franchisePaymentRules,
   franchiseAdminStatusRules,
   franchiseInfoRules,
   franchiseNoteRules,

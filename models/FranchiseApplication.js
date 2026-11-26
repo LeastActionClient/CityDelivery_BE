@@ -35,7 +35,6 @@ const paymentEventSchema = new mongoose.Schema(
     eventId: { type: String, trim: true, maxlength: 200 },
     type: { type: String, trim: true, maxlength: 120 },
     receivedAt: { type: Date, default: Date.now },
-    orderStatus: { type: String, trim: true, maxlength: 40, default: '' },
     message: { type: String, trim: true, maxlength: 500, default: '' },
   },
   { _id: false }
@@ -89,18 +88,13 @@ const franchiseApplicationSchema = new mongoose.Schema(
 
     payment: {
       status: { type: String, required: true, enum: FRANCHISE_PAYMENT_STATUSES, default: 'PENDING', index: true },
-      provider: { type: String, trim: true, maxlength: 40, default: 'Cashfree' },
-      orderId: { type: String, trim: true, maxlength: 60, default: '', index: true },
-      paymentSessionId: { type: String, trim: true, maxlength: 500, default: '' },
-      cfOrderId: { type: String, trim: true, maxlength: 60, default: '' },
-      orderStatus: { type: String, trim: true, maxlength: 40, default: '' },
+      provider: { type: String, trim: true, maxlength: 40, default: 'MANUAL' },
       amount: { type: Number, min: 0, default: 0 },
       currency: { type: String, trim: true, maxlength: 8, default: 'INR' },
-      transactionId: { type: String, trim: true, maxlength: 120, default: '' },
+      transactionId: { type: String, trim: true, maxlength: 120, default: '', index: true },
       paymentMethod: { type: String, trim: true, maxlength: 120, default: '' },
       paidAt: Date,
       lastError: { type: String, trim: true, maxlength: 500, default: '' },
-      attempts: { type: Number, default: 0 },
       events: { type: [paymentEventSchema], default: [] },
     },
 

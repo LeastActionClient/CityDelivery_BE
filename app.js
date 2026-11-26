@@ -12,7 +12,6 @@ const riderRoutes = require('./routes/riderRoutes');
 const riderAdminRoutes = require('./routes/riderAdminRoutes');
 const franchiseRoutes = require('./routes/franchiseRoutes');
 const franchiseAdminRoutes = require('./routes/franchiseAdminRoutes');
-const franchiseWebhookRoutes = require('./routes/franchiseWebhookRoutes');
 
 const app = express();
 
@@ -46,14 +45,6 @@ app.use(
   })
 );
 
-// Cashfree signs the exact raw body. Mount this before express.json().
-app.use(
-  '/api/franchises/webhook',
-  apiLimiter,
-  express.raw({ type: 'application/json', limit: '1mb' }),
-  franchiseWebhookRoutes
-);
-
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 
@@ -73,7 +64,6 @@ app.get('/api/health', (_req, res) => {
     db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     smtpConfigured: env.smtpConfigured,
     cloudinaryConfigured: env.cloudinaryConfigured,
-    cashfreeConfigured: env.cashfreeConfigured,
   });
 });
 

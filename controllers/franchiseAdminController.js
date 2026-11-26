@@ -60,7 +60,6 @@ exports.adminList = async (req, res, next) => {
         { email: rx },
         { 'location.city': rx },
         { 'location.preferredOperatingArea': rx },
-        { 'payment.orderId': rx },
         { 'payment.transactionId': rx },
       ];
     }
@@ -170,19 +169,17 @@ exports.adminMarkFeePaid = async (req, res, next) => {
 
     const paidAt = new Date();
     doc.payment.status = 'PAID';
-    doc.payment.provider = 'OFFLINE';
-    doc.payment.orderStatus = 'PAID';
+    doc.payment.provider = 'MANUAL';
     doc.payment.amount = doc.feeSnapshot?.amount || doc.payment.amount || 1000;
     doc.payment.currency = doc.feeSnapshot?.currency || doc.payment.currency || 'INR';
     doc.payment.transactionId = reference;
-    doc.payment.paymentMethod = 'Offline (admin)';
+    doc.payment.paymentMethod = 'Manual (admin)';
     doc.payment.paidAt = paidAt;
     doc.payment.lastError = '';
     doc.payment.events.push({
-      eventId: `offline-${paidAt.getTime()}-${doc.applicationId}`,
+      eventId: `manual-${paidAt.getTime()}-${doc.applicationId}`,
       type: 'ADMIN_MARK_PAID',
       receivedAt: paidAt,
-      orderStatus: 'PAID',
       message: note || 'Initial payment marked as paid by admin.',
     });
     if (doc.applicationStatus === 'Payment Pending') doc.applicationStatus = 'Payment Successful';

@@ -103,7 +103,7 @@ function normalizeApplicationData(body, settings) {
 }
 
 const STATUS_NEXT_STEPS = {
-  'Payment Pending': 'Initial payment is optional. You can pay from the status page, or our team will continue reviewing your application.',
+  'Payment Pending': 'Initial payment is optional. Our team will share the simple payment steps and continue reviewing your application.',
   'Payment Successful': 'Initial payment received. Our team will continue reviewing your application and contact you if anything else is needed.',
   'Under Review': 'Your application is being reviewed. Initial payment is optional; no action is needed right now.',
   Approved: 'Your application has been approved. Our team will contact you with agreement and onboarding details.',
@@ -135,7 +135,6 @@ function sanitizePublicApplication(doc) {
           currency: d.payment.currency || 'INR',
           paidAt: d.payment.paidAt || null,
           transactionId: d.payment.transactionId || null,
-          orderId: d.payment.transactionId ? d.payment.orderId : null,
           lastError: d.payment.status === 'FAILED' ? d.payment.lastError || '' : '',
         }
       : null,
@@ -176,46 +175,6 @@ function resetNotification(state) {
   state.lastError = undefined;
 }
 
-function appendPaymentEvent(doc, { eventId = '', type = '', orderStatus = '', message = '' } = {}) {
-  if (!doc.payment.events) doc.payment.events = [];
-  if (eventId && doc.payment.events.some((event) => event.eventId === eventId)) return false;
-  doc.payment.events.push({
-    eventId: String(eventId).slice(0, 200),
-    type: String(type).slice(0, 120),
-    orderStatus: String(orderStatus).slice(0, 40),
-    message: String(message).slice(0, 500),
-    receivedAt: new Date(),
-  });
-  if (doc.payment.events.length > 30) doc.payment.events = doc.payment.events.slice(-30);
-  return true;
-}
-
-function applyPaymentUpdate(doc, update) {
-  const isPaid = update.status === 'PAID';
-  doc.payment.status = isPaid ? 'PAID' : update.status === 'FAILED' ? 'FAILED' : doc.payment.status;
-  if (update.orderId) doc.payment.orderId = update.orderId;
-  if (update.sessionId) doc.payment.paymentSessionId = update.sessionId;
-  if (update.amount) doc.payment.amount = Number(update.amount);
-  if (update.currency) doc.payment.currency = update.currency;
-  if (update.cfOrderId) doc.payment.cfOrderId = update.cfOrderId;
-  if (update.orderStatus) doc.payment.orderStatus = update.orderStatus;
-  if (update.transactionId) doc.payment.transactionId = update.transactionId;
-  if (update.paymentMethod) doc.payment.paymentMethod = update.paymentMethod;
-  if (update.lastError !== undefined) doc.payment.lastError = String(update.lastError).slice(0, 500);
-
-  let becamePaid = false;
-  if (isPaid) {
-    if (!doc.payment.paidAt) doc.payment.paidAt = update.paidAt ? new Date(update.paidAt) : new Date();
-    if (doc.applicationStatus === 'Payment Pending') {
-      doc.applicationStatus = 'Payment Successful';
-      becamePaid = true;
-    }
-    doc.payment.lastError = '';
-  }
-  const newEvent = appendPaymentEvent(doc, update);
-  return { becamePaid, newEvent };
-}
-
 module.exports = {
   getFranchiseSettings,
   actorFromReq,
@@ -229,6 +188,4 @@ module.exports = {
   documentRecords,
   documentList,
   resetNotification,
-  appendPaymentEvent,
-  applyPaymentUpdate,
 };
