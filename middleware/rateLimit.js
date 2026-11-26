@@ -18,6 +18,14 @@ const submissionLimiter = rateLimit({
   handler: json429('You have submitted several requests recently. Please try again later.'),
 });
 
+const requestStatusLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: json429('Too many status checks. Please try again in a few minutes.'),
+});
+
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 500,
@@ -62,6 +70,7 @@ const franchiseStatusLimiter = rateLimit({
 module.exports = {
   apiLimiter,
   submissionLimiter,
+  requestStatusLimiter,
   adminLimiter,
   riderSubmissionLimiter,
   riderStatusLimiter,

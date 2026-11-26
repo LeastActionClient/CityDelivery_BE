@@ -11,6 +11,13 @@ const CATEGORIES = [
 ];
 
 const STATUSES = ['Pending', 'Reviewing', 'Contacted', 'Completed', 'Cancelled'];
+const REQUEST_NEXT_STEPS = {
+  Pending: 'Your request has been received. Our team will review it and contact you with the next steps.',
+  Reviewing: 'Our team is reviewing your request. Please keep your Request ID handy for any follow-up.',
+  Contacted: 'Our team has contacted you about this request. Check your email or phone for the latest update.',
+  Completed: 'This request is complete. Contact us if you need anything else.',
+  Cancelled: 'This request was cancelled. Contact us if you think this is a mistake.',
+};
 const NOTIFY_STATES = ['not_applicable', 'pending', 'sent', 'failed'];
 const PROHIBITED_ITEMS_POLICY_VERSION = '2026-11-20';
 
@@ -95,6 +102,7 @@ const FRANCHISE_ADMIN_ROLES = ['owner', 'franchise_manager', 'support'];
 module.exports = {
   CATEGORIES,
   STATUSES,
+  REQUEST_NEXT_STEPS,
   NOTIFY_STATES,
   PROHIBITED_ITEMS_POLICY_VERSION,
   MAX_IMAGE_BYTES,

@@ -70,7 +70,7 @@ async function notifyRequest(requestDoc) {
     r.customerNotification.attempts += 1;
     r.customerNotification.lastAttemptAt = now;
     try {
-      const mail = customerConfirmationEmail(r);
+      const mail = customerConfirmationEmail(r, requestStatusUrl(r.requestId));
       await sendMail({ to: r.email, replyTo: env.ownerEmail, ...mail });
       r.customerNotification.status = 'sent';
       r.customerNotification.sentAt = new Date();
@@ -102,6 +102,10 @@ async function notifyContact(msgDoc) {
   }
   await msgDoc.save();
   return msgDoc.notification.status;
+}
+
+function requestStatusUrl(requestId) {
+  return `${env.frontendUrl}/request/status?requestId=${encodeURIComponent(requestId)}`;
 }
 
 function riderStatusUrl() {

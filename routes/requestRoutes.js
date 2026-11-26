@@ -2,7 +2,7 @@ const express = require('express');
 const { upload, verifyImage } = require('../middleware/upload');
 const { validate, rejectMongoOperators } = require('../middleware/validate');
 const { productRequestRules } = require('../middleware/rules');
-const { submissionLimiter } = require('../middleware/rateLimit');
+const { submissionLimiter, requestStatusLimiter } = require('../middleware/rateLimit');
 const ctrl = require('../controllers/requestController');
 
 const router = express.Router();
@@ -19,6 +19,7 @@ router.post(
   ctrl.createRequest
 );
 
-router.get('/:requestId/status', ctrl.getRequestStatus);
+router.post('/status/bulk', requestStatusLimiter, ctrl.getRequestStatusBulk);
+router.get('/:requestId/status', requestStatusLimiter, ctrl.getRequestStatus);
 
 module.exports = router;

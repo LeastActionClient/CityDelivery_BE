@@ -4,9 +4,10 @@ const { generateRequestId } = require('../utils/generateRequestId');
 const { uploadProductImage, deleteImage } = require('../services/cloudinaryService');
 const { notifyRequest } = require('../services/emailService');
 const { env } = require('../config/env');
-const { STATUSES, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
+const { STATUSES, REQUEST_NEXT_STEPS, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
 
 const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+const REQUEST_ID_PATTERN = /^CDS-\d{8}-[A-Z0-9]{6}$/;
 
 /** Only non-sensitive fields ever leave the server on the public endpoint. */
 function publicView(doc, { duplicate = false } = {}) {
@@ -123,14 +124,44 @@ exports.createRequest = async (req, res, next) => {
   }
 };
 
-// GET /api/requests/:requestId/status  (public — returns only status, nothing personal)
+function statusPayload(doc) {
+  return {
+    requestId: doc.requestId,
+    status: doc.status,
+    nextSteps: REQUEST_NEXT_STEPS[doc.status] || '',
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
 exports.getRequestStatus = async (req, res, next) => {
   try {
     const id = String(req.params.requestId || '').toUpperCase();
-    if (!/^CDS-\d{8}-[A-Z0-9]{6}$/.test(id)) throw new AppError('Invalid request ID.', 400);
-    const doc = await ProductRequest.findOne({ requestId: id }).select('requestId status createdAt');
+    if (!REQUEST_ID_PATTERN.test(id)) throw new AppError('Invalid request ID.', 400);
+    const doc = await ProductRequest.findOne({ requestId: id }).select('requestId status createdAt updatedAt');
     if (!doc) throw new AppError('Request not found.', 404);
-    res.json({ success: true, data: { requestId: doc.requestId, status: doc.status, createdAt: doc.createdAt } });
+    res.json({ success: true, data: statusPayload(doc) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getRequestStatusBulk = async (req, res, next) => {
+  try {
+    const raw = Array.isArray(req.body?.requestIds) ? req.body.requestIds : [];
+    const ids = [...new Set(raw.map((id) => String(id || '').toUpperCase()).filter(Boolean))];
+    if (!ids.length) throw new AppError('Provide at least one request ID.', 400);
+    if (ids.length > 50) throw new AppError('You can check up to 50 requests at a time.', 400);
+    if (ids.some((id) => !REQUEST_ID_PATTERN.test(id))) throw new AppError('Invalid request ID.', 400);
+
+    const docs = await ProductRequest.find({ requestId: { $in: ids } })
+      .select('requestId status createdAt updatedAt')
+      .lean();
+    const byId = new Map(docs.map((doc) => [doc.requestId, statusPayload(doc)]));
+    const items = ids.flatMap((id) => (byId.has(id) ? [byId.get(id)] : []));
+    const missing = ids.filter((id) => !byId.has(id));
+
+    res.json({ success: true, data: { items, missing } });
   } catch (err) {
     next(err);
   }

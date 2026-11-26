@@ -141,7 +141,7 @@ function ownerRequestEmail(r) {
   };
 }
 
-function customerConfirmationEmail(r) {
+function customerConfirmationEmail(r, statusUrl = '') {
   const body =
     `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
        Hi ${esc(r.customerName)},<br><br>
@@ -149,7 +149,8 @@ function customerConfirmationEmail(r) {
      </td></tr>
      <tr><td style="padding-top:18px;">
        <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Request ID: ${esc(r.requestId)}</span>
-     </td></tr>` +
+      </td></tr>` +
+    statusButton(statusUrl, 'Check request status') +
     section('Your request', row('Product', r.productName) + row('Store', r.storeName) + row('Quantity', r.quantity)) +
     `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
        Please keep your Request ID handy and mention it if you contact us. This email confirms receipt only — it is not a guarantee of availability, price or delivery time.
@@ -164,7 +165,7 @@ function customerConfirmationEmail(r) {
       body,
       footer: 'You are receiving this email because a product request was submitted with your email address. If this was not you, you can ignore this message.',
     }),
-    text: `Hi ${r.customerName},\n\nWe have received your product request.\n\nRequest ID: ${r.requestId}\nProduct: ${r.productName}\nStore: ${r.storeName}\n\nOur team will contact you with the next steps.\n\n— City Delivery Services`,
+    text: `Hi ${r.customerName},\n\nWe have received your product request.\n\nRequest ID: ${r.requestId}\nProduct: ${r.productName}\nStore: ${r.storeName}\n\nOur team will contact you with the next steps.${statusUrl ? `\n\nCheck request status: ${statusUrl}` : ''}\n\n— City Delivery Services`,
   };
 }
 
