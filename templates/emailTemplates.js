@@ -27,6 +27,25 @@ function row(label, value, { multiline = false } = {}) {
   </tr>`;
 }
 
+function itemsForEmail(r) {
+  if (Array.isArray(r.items) && r.items.length) return r.items;
+  return [{
+    productName: r.productName,
+    productCategory: r.productCategory,
+    storeName: r.storeName,
+    storeLocation: r.storeLocation,
+    productDescription: r.productDescription,
+    quantity: r.quantity,
+    estimatedBudget: r.estimatedBudget,
+  }];
+}
+
+function budgetLabel(value) {
+  return value !== undefined && value !== null && value !== ''
+    ? `₹${Number(value).toLocaleString('en-IN')}`
+    : '';
+}
+
 function section(title, rows) {
   return `
   <tr><td style="padding:22px 0 6px;">
@@ -63,7 +82,8 @@ function layout({ preheader, heading, intro, body, footer }) {
 }
 
 function ownerRequestEmail(r) {
-  const budget = r.estimatedBudget != null ? `₹${Number(r.estimatedBudget).toLocaleString('en-IN')}` : '';
+  const items = itemsForEmail(r);
+  const itemCount = items.length;
   const image = r.productImage?.url
     ? `<tr><td style="padding:18px 0 0;">
          <div style="font-size:12px;color:${BRAND.muted};margin-bottom:8px;">Reference image</div>
@@ -80,16 +100,18 @@ function ownerRequestEmail(r) {
       'Customer',
       row('Name', r.customerName) + row('Email', r.email) + row('Mobile number', r.phone)
     ) +
-    section(
-      'Product',
-      row('Product name', r.productName) +
-        row('Category', r.productCategory) +
-        row('Store name', r.storeName) +
-        row('Store location', r.storeLocation) +
-        row('Quantity', r.quantity) +
-        row('Estimated budget', budget) +
-        row('Description', r.productDescription, { multiline: true })
-    ) +
+    items.map((item, index) =>
+      section(
+        itemCount > 1 ? `Item ${index + 1}: ${item.productName}` : 'Product',
+        row('Product name', item.productName) +
+          row('Category', item.productCategory) +
+          row('Store name', item.storeName) +
+          row('Store location', item.storeLocation) +
+          row('Quantity', item.quantity) +
+          row('Estimated budget', budgetLabel(item.estimatedBudget)) +
+          row('Description', item.productDescription, { multiline: true })
+      )
+    ).join('') +
     image +
     section(
       'Delivery',
@@ -105,7 +127,9 @@ function ownerRequestEmail(r) {
   return {
     subject: `New Product Request - City Delivery Services (#${r.requestId})`,
     html: layout({
-      preheader: `${r.customerName} requested ${r.productName} from ${r.storeName}`,
+      preheader: itemCount > 1
+        ? `${r.customerName} requested ${itemCount} items from ${[...new Set(items.map((item) => item.storeName).filter(Boolean))].join(', ') || 'multiple stores'}`
+        : `${r.customerName} requested ${r.productName} from ${r.storeName}`,
       heading: 'New product request',
       intro: `A customer just submitted a request through the website.`,
       body,
@@ -120,14 +144,17 @@ function ownerRequestEmail(r) {
       `Email: ${r.email}`,
       `Mobile: ${r.phone}`,
       '',
-      `PRODUCT`,
-      `Product: ${r.productName}`,
-      `Category: ${r.productCategory}`,
-      `Store: ${r.storeName}`,
-      `Store location: ${r.storeLocation}`,
-      `Quantity: ${r.quantity}`,
-      `Estimated budget: ${budget || '—'}`,
-      `Description: ${r.productDescription}`,
+      `PRODUCTS`,
+      ...items.flatMap((item, index) => [
+        itemCount > 1 ? `Item ${index + 1}` : '',
+        `Product: ${item.productName}`,
+        `Category: ${item.productCategory}`,
+        `Store: ${item.storeName}`,
+        `Store location: ${item.storeLocation}`,
+        `Quantity: ${item.quantity}`,
+        `Estimated budget: ${budgetLabel(item.estimatedBudget) || '—'}`,
+        `Description: ${item.productDescription}`,
+      ]),
       r.productImage?.url ? `Image: ${r.productImage.url}` : '',
       '',
       `DELIVERY`,
@@ -142,6 +169,14 @@ function ownerRequestEmail(r) {
 }
 
 function customerConfirmationEmail(r, statusUrl = '') {
+  const items = itemsForEmail(r);
+  const itemCount = items.length;
+  const requestRows = itemCount > 1
+    ? items.map((item, index) => row(
+      `Item ${index + 1}`,
+      `${item.productName}${item.storeName ? ` from ${item.storeName}` : ''} (Qty ${item.quantity})`
+    )).join('')
+    : row('Product', r.productName) + row('Store', r.storeName) + row('Quantity', r.quantity);
   const body =
     `<tr><td style="padding-top:22px;font-size:15px;line-height:1.65;color:${BRAND.text};">
        Hi ${esc(r.customerName)},<br><br>
@@ -151,7 +186,7 @@ function customerConfirmationEmail(r, statusUrl = '') {
        <span style="display:inline-block;background:${BRAND.green};color:#fff;font-weight:800;font-size:15px;padding:10px 18px;border-radius:999px;letter-spacing:.5px;">Request ID: ${esc(r.requestId)}</span>
       </td></tr>` +
     statusButton(statusUrl, 'Check request status') +
-    section('Your request', row('Product', r.productName) + row('Store', r.storeName) + row('Quantity', r.quantity)) +
+    section(itemCount > 1 ? `Your request (${itemCount} items)` : 'Your request', requestRows) +
     `<tr><td style="padding-top:22px;font-size:13px;line-height:1.6;color:${BRAND.muted};">
        Please keep your Request ID handy and mention it if you contact us. This email confirms receipt only — it is not a guarantee of availability, price or delivery time.
      </td></tr>`;
@@ -159,13 +194,15 @@ function customerConfirmationEmail(r, statusUrl = '') {
   return {
     subject: 'Your Product Request Has Been Received - City Delivery Services',
     html: layout({
-      preheader: `We received your request for ${r.productName}.`,
+      preheader: itemCount > 1 ? `We received your request for ${itemCount} items.` : `We received your request for ${r.productName}.`,
       heading: 'We got your request',
       intro: 'Sit tight — our team will be in touch.',
       body,
       footer: 'You are receiving this email because a product request was submitted with your email address. If this was not you, you can ignore this message.',
     }),
-    text: `Hi ${r.customerName},\n\nWe have received your product request.\n\nRequest ID: ${r.requestId}\nProduct: ${r.productName}\nStore: ${r.storeName}\n\nOur team will contact you with the next steps.${statusUrl ? `\n\nCheck request status: ${statusUrl}` : ''}\n\n— City Delivery Services`,
+    text: `Hi ${r.customerName},\n\nWe have received your product request.\n\nRequest ID: ${r.requestId}\n${itemCount > 1
+      ? `Items (${itemCount}):\n${items.map((item, index) => `${index + 1}. ${item.productName}${item.storeName ? ` from ${item.storeName}` : ''} (Qty ${item.quantity})`).join('\n')}`
+      : `Product: ${r.productName}\nStore: ${r.storeName}`}\n\nOur team will contact you with the next steps.${statusUrl ? `\n\nCheck request status: ${statusUrl}` : ''}\n\n— City Delivery Services`,
   };
 }
 

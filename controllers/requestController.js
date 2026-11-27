@@ -1,13 +1,83 @@
+const crypto = require('crypto');
 const ProductRequest = require('../models/ProductRequest');
 const AppError = require('../utils/AppError');
 const { generateRequestId } = require('../utils/generateRequestId');
 const { uploadProductImage, deleteImage } = require('../services/cloudinaryService');
 const { notifyRequest } = require('../services/emailService');
 const { env } = require('../config/env');
-const { STATUSES, REQUEST_NEXT_STEPS, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
+const { STATUSES, CATEGORIES, REQUEST_NEXT_STEPS, PROHIBITED_ITEMS_POLICY_VERSION } = require('../utils/constants');
+const { cleanText } = require('../utils/sanitize');
 
 const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
 const REQUEST_ID_PATTERN = /^CDS-\d{8}-[A-Z0-9]{6}$/;
+const MAX_REQUEST_ITEMS = 20;
+
+function parseRequestItems(body) {
+  let raw = body.items;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      throw new AppError('Please provide a valid item list.', 422);
+    }
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    raw = [{
+      productName: body.productName,
+      productCategory: body.productCategory,
+      storeName: body.storeName,
+      storeLocation: body.storeLocation,
+      productDescription: body.productDescription,
+      quantity: body.quantity,
+      estimatedBudget: body.estimatedBudget,
+    }];
+  }
+  if (raw.length > MAX_REQUEST_ITEMS) {
+    throw new AppError(`You can add up to ${MAX_REQUEST_ITEMS} items in one request.`, 422);
+  }
+  return raw.map((item, index) => {
+    const n = index + 1;
+    const productName = cleanText(item?.productName);
+    const productCategory = cleanText(item?.productCategory);
+    if (productName.length < 2 || productName.length > 120) {
+      throw new AppError(`Item ${n}: product name must be between 2 and 120 characters.`, 422);
+    }
+    if (!CATEGORIES.includes(productCategory)) {
+      throw new AppError(`Item ${n}: please choose a valid product category.`, 422);
+    }
+    const storeName = cleanText(item?.storeName);
+    const storeLocation = cleanText(item?.storeLocation);
+    const productDescription = cleanText(item?.productDescription, { multiline: true });
+    if (storeName.length > 120 || storeLocation.length > 200 || productDescription.length > 1500) {
+      throw new AppError(`Item ${n}: one of the text fields is too long.`, 422);
+    }
+    const quantity = Number(item?.quantity ?? 1);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+      throw new AppError(`Item ${n}: quantity must be between 1 and 100.`, 422);
+    }
+    let estimatedBudget = null;
+    if (item?.estimatedBudget !== undefined && item?.estimatedBudget !== null && item?.estimatedBudget !== '') {
+      estimatedBudget = Number(item.estimatedBudget);
+      if (!Number.isFinite(estimatedBudget) || estimatedBudget < 0 || estimatedBudget > 10000000) {
+        throw new AppError(`Item ${n}: budget must be a positive number.`, 422);
+      }
+    }
+    return { productName, productCategory, storeName, storeLocation, productDescription, quantity, estimatedBudget };
+  });
+}
+
+function itemsSignature(items) {
+  const payload = JSON.stringify(items.map((item) => [
+    item.productName,
+    item.productCategory,
+    item.storeName,
+    item.storeLocation,
+    item.productDescription,
+    item.quantity,
+    item.estimatedBudget,
+  ]));
+  return crypto.createHash('sha256').update(payload).digest('hex');
+}
 
 /** Only non-sensitive fields ever leave the server on the public endpoint. */
 function publicView(doc, { duplicate = false } = {}) {
@@ -45,6 +115,9 @@ exports.createRequest = async (req, res, next) => {
 
     const b = req.body;
     const submissionKey = b.submissionKey || undefined;
+    const items = parseRequestItems(b);
+    const primaryItem = items[0];
+    const signature = itemsSignature(items);
 
     // 1) Idempotency — same submission key => return the stored request, never create another.
     if (submissionKey) {
@@ -60,8 +133,7 @@ exports.createRequest = async (req, res, next) => {
     // 2) Soft duplicate check — identical customer/product/store within a few minutes.
     const recent = await ProductRequest.findOne({
       email: b.email,
-      productName: b.productName,
-      storeName: b.storeName,
+      itemsSignature: signature,
       createdAt: { $gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
     }).setOptions({ sanitizeFilter: false });
     if (recent) {
@@ -84,14 +156,16 @@ exports.createRequest = async (req, res, next) => {
         customerName: b.customerName,
         email: b.email,
         phone: b.phone,
-        productName: b.productName,
-        productCategory: b.productCategory,
-        storeName: b.storeName,
-        storeLocation: b.storeLocation,
-        productDescription: b.productDescription,
-        quantity: b.quantity || 1,
-        estimatedBudget: b.estimatedBudget ?? null,
+        productName: primaryItem.productName,
+        productCategory: primaryItem.productCategory,
+        storeName: primaryItem.storeName,
+        storeLocation: primaryItem.storeLocation,
+        productDescription: primaryItem.productDescription,
+        quantity: primaryItem.quantity,
+        estimatedBudget: primaryItem.estimatedBudget,
         productImage,
+        items,
+        itemsSignature: signature,
         deliveryAddress: b.deliveryAddress,
         city: b.city,
         postalCode: b.postalCode,

@@ -12,6 +12,19 @@ const notificationSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const requestItemSchema = new mongoose.Schema(
+  {
+    productName: { type: String, required: true, trim: true, minlength: 2, maxlength: 120 },
+    productCategory: { type: String, required: true, enum: CATEGORIES },
+    storeName: { type: String, trim: true, maxlength: 120, default: '' },
+    storeLocation: { type: String, trim: true, maxlength: 200, default: '' },
+    productDescription: { type: String, trim: true, maxlength: 1500, default: '' },
+    quantity: { type: Number, required: true, min: 1, max: 100, default: 1 },
+    estimatedBudget: { type: Number, min: 0, max: 10000000, default: null },
+  },
+  { _id: false }
+);
+
 const productRequestSchema = new mongoose.Schema(
   {
     requestId: { type: String, required: true, unique: true, index: true },
@@ -36,6 +49,8 @@ const productRequestSchema = new mongoose.Schema(
       height: Number,
       bytes: Number,
     },
+    items: { type: [requestItemSchema], default: [] },
+    itemsSignature: { type: String, trim: true, maxlength: 64, default: '', index: true },
 
     deliveryAddress: { type: String, required: true, trim: true, minlength: 5, maxlength: 300 },
     city: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
@@ -65,5 +80,6 @@ productRequestSchema.index({
 });
 // Supports the "same customer re-submits the same thing" duplicate check
 productRequestSchema.index({ email: 1, productName: 1, storeName: 1, createdAt: -1 });
+productRequestSchema.index({ email: 1, itemsSignature: 1, createdAt: -1 });
 
 module.exports = mongoose.model('ProductRequest', productRequestSchema);
